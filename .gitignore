@@ -1,0 +1,15 @@
+# TIA Portal: сам проект и служебные артефакты не версионируются —
+# в git лежат только экспортированные исходники (*.scl, *.db, *.udt), PLCTags.xml и документация.
+*.ap19
+*.ap19_*
+*.zap19
+*.tmp
+*.bak
+*.bak_*
+_1/
+Logs/
+IM/
+System/
+XRef/
+obj/
+UserFiles/
