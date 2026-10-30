@@ -2,12 +2,37 @@ FUNCTION_BLOCK "ConveyorMain"
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
    VAR 
-
+      hardIn : "HardwareInput";
+      logic : "LogicDevice";
+      hardOut : "HardwareOutput";
+      hmi : "HMIInterface";
    END_VAR
+
 BEGIN
-	
+    // ============================================
+    // ОРКЕСТРАТОР КОНВЕЙЕРА
+    // ============================================
+    // Чистый оркестратор: ни одного обращения к PLC-тегам и DB.
+    // Данные между слоями передаются простыми типами через
+    // VAR_INPUT / VAR_OUTPUT, поэтому переход на другую аппаратуру
+    // выполняется заменой HardwareInput / HardwareOutput / HMIInterface.
+    // Порядок вызовов задан здесь и не зависит от порядка в OB1:
+    //   1. чтение входов,  2. технологическая логика,
+    //   3. запись выходов, 4. обмен с панелью оператора.
+    // ============================================
 
-	
+    // 1. Датчики: чтение полевых входов и нормализация НЗ
+    #hardIn();
+
+    // 2. Логика: RS-триггер с самоподхватом
+    #logic(BoxOnStart := #hardIn.BoxOnStart,
+           BoxOnEnd   := #hardIn.BoxOnEnd);
+
+    // 3. Выходы: двигатель конвейера и физическая лампа «работа»
+    #hardOut(ComRotate := #logic.ComRotate,
+             LampWork  := #logic.ComRotate);
+
+    // 4. Панель оператора: сбоев в задании нет, лампа сбоя погашена
+    #hmi(BeltRun   := #logic.ComRotate,
+         BeltFault := FALSE);
 END_FUNCTION_BLOCK
-
-

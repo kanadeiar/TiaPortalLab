@@ -1,0 +1,34 @@
+FUNCTION_BLOCK "LogicDevice"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      BoxOnStart { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      BoxOnEnd { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      ComRotate { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+   VAR 
+      rtBoxOnEnd : R_TRIG;
+   END_VAR
+
+
+BEGIN
+    // ============================================
+    // ЛОГИКА УПРАВЛЕНИЯ ЛЕНТОЙ КОНВЕЙЕРА
+    // ============================================
+    // RS-триггер с самоподхватом:
+    // — Включение (SET):    коробка обнаружена на старте
+    // — Выключение (RESET): коробка дошла до конца ленты,
+    //   останов по переднему фронту сигнала датчика
+    // — Пока коробка в пути: лента вращается (самоподхват)
+    // ============================================
+
+    // Фронт вместо уровня: коробка, оставшаяся на конечном датчике,
+    // не блокирует пуск следующей коробкой
+    #rtBoxOnEnd(CLK := #BoxOnEnd);
+
+    #ComRotate := (#BoxOnStart OR #ComRotate) AND NOT #rtBoxOnEnd.Q;
+END_FUNCTION_BLOCK

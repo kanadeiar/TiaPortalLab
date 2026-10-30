@@ -4,11 +4,7 @@ TITLE = "Main Program Sweep (Cycle)"
 VERSION : 0.1
 
 BEGIN
-
-    
-    	
+    // Единственный вызов: всю работу делает оркестратор "ConveyorMain".
+    // Слои вызываются внутри него в порядке: вход → логика → выход → ЧМИ.
+    "ConveyorMain_DB"();
 END_ORGANIZATION_BLOCK
-
-
-
-

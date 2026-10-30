@@ -1,0 +1,13 @@
+DATA_BLOCK "Hmi_DB"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+NON_RETAIN
+   VAR 
+      LampWork : Bool;
+      LampFault : Bool;
+   END_VAR
+
+
+BEGIN
+
+END_DATA_BLOCK

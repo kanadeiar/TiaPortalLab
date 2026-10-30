@@ -56,6 +56,13 @@
 3. Лампы и кнопки панели **не занимают** физические выходы ПЛК: это поля DB или теги `HMI_*` без адреса.
 4. Отдельная кнопка «Стоп» и аварийный останов — при появлении соответствующих требований в задании.
 
+Поля global-DB `Hmi_DB` — единственный канал обмена с панелью; заполняет их блок `HMIInterface`:
+
+| Поле | Тип | Смысл |
+| ---- | --- | ----- |
+| `"Hmi_DB".LampWork` | `Bool` | лампа «конвейер работает» |
+| `"Hmi_DB".LampFault` | `Bool` | красная лампа сбоя / запрета / ошибки |
+
 ## Входы/выходы
 
 Имена и адреса соответствуют `PLCTags.xml` (таблица `InOut`). Адреса действительны, если в конфигурации оборудования CPU имеет встроенные DI с `%I0.0…` и DQ с `%Q0.0…` (как у CPU 1212C).
@@ -90,26 +97,20 @@ TiaPortalLab/
 ├── ProgramCycle.scl              ← OB1 «ProgramCycle» (циклический вызов оркестратора)
 ├── PLCTags.xml                   ← таблица PLC-тегов InOut (импорт в TIA)
 ├── ConveyorObject/
-│   ├── ConveyorMain.scl          ← FB «ConveyorMain» — оркестратор
-│   └── ConveyorMain_DB.db        ← single-instance DB «ConveyorMain_DB»
+│   ├── ConveyorMain.scl          ← FB «ConveyorMain» — чистый оркестратор
+│   ├── ConveyorMain_DB.db        ← single-instance DB «ConveyorMain_DB»
+│   ├── HardwareInput.scl         ← сопряжение с аппаратурой: чтение и нормализация НЗ-датчиков
+│   ├── HardwareOutput.scl        ← сопряжение с аппаратурой: запись команд в выходы
+│   ├── HMIInterface.scl          ← интерфейс с оператором: лампы панели
+│   ├── Hmi_DB.db                 ← global-DB данных панели оператора
+│   └── Logic/
+│       └── LogicDevice.scl       ← RS-триггер с самоподхватом
 ├── .clinerules/standarts.md      ← правила кода и архитектуры
 ├── README.md                     ← это задание
 └── LICENSE                       ← GPL-3.0
 ```
 
-Целевая структура после реализации логики (см. `.clinerules/standarts.md`, раздел 8):
-
-```
-ConveyorObject/
-├── ConveyorMain.scl         ← чистый оркестратор
-├── ConveyorMain_DB.db       ← экземпляр оркестратора
-├── HardwareInput.scl        ← чтение и нормализация датчиков
-├── HardwareOutput.scl       ← запись команд в выходы
-├── Logic/
-│   └── LogicDevice.scl      ← RS-триггер с самоподхватом
-├── HMIInterface.scl         ← лампы/кнопки панели
-└── Hmi_DB.db                ← данные панели оператора
-```
+Порядок вызовов внутри оркестратора: `HardwareInput` → `LogicDevice` → `HardwareOutput` → `HMIInterface` (см. `.clinerules/standarts.md`, разделы 5 и 8).
 
 ## Развёртывание в TIA Portal V19
 
@@ -119,7 +120,7 @@ ConveyorObject/
 2. **Добавить контроллер**: `Devices & networks → Add new device → Controllers → SIMATIC S7-1200 → CPU 1212C DC/DC/DC → 6ES7 212-1AG40-0XB0 → OK`.
 3. **Проверить адреса I/O**: в `Device view` выделить CPU → `Properties` → `PROFINET interface` (IP-адрес) и адреса встроенных DI/DQ. Они должны совпадать с `PLCTags.xml` (`%I0.0`, `%I0.1`, `%Q0.0`, `%Q0.1`).
 4. **Импортировать теги**: `PLC_1 → PLC tags → Show all tags` → ПКМ → `Import…` → выбрать `PLCTags.xml` → `OK`.
-5. **Импортировать блоки**: `PLC_1 → External source files` → `Add new external file` → выбрать `ConveyorObject\*.scl`, `ConveyorObject\*.db`, `ProgramCycle.scl` → ПКМ по каждому файлу → `Generate blocks from source` → `OK`.
+5. **Импортировать блоки**: `PLC_1 → External source files` → `Add new external file` → выбрать `ConveyorObject\*.scl`, `ConveyorObject\Logic\*.scl`, `ConveyorObject\*.db`, `ProgramCycle.scl` → ПКМ по каждому файлу → `Generate blocks from source` → `OK`.
    Порядок важен: сначала FB (`HardwareInput`, `HardwareOutput`, `LogicDevice`, `HMIInterface`, `ConveyorMain`), затем global-DB (`Hmi_DB`), затем single-instance DB (`ConveyorMain_DB`), затем OB (`ProgramCycle`). Если блок ссылается на несуществующий тип — TIA выдаст «тип не найден».
 6. **Проверить нумерацию OB**: `ProgramCycle` должен быть циклическим организационным блоком **OB1** (в свойствах блока — «Program cycle»). В проекте не должно остаться двух циклических OB.
 7. **Скомпилировать**: ПКМ по `PLC_1` → `Compile → Software (rebuild all blocks)` (или `Ctrl+B`). Ожидается 0 ошибок.
@@ -156,7 +157,7 @@ ConveyorObject/
 5. **PLCSIM V19**: входы `%I` в реальном CPU перезаписываются образом входов, поэтому для эмуляции датчиков используйте SIM table в PLCSIM (или Force). Прямая запись в `%I` из таблицы наблюдения ожидаемого эффекта не даёт.
 6. **Trace** (S7-1200 поддерживает трассировку) — для разбора редких событий и дребезга датчиков.
 
-#### Циклограмма цикла (одна коробка)
+#### Циклограмма одного цикла (одна коробка)
 
 ```text
 DI_SensorA       ‾‾‾‾‾\_________/‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
@@ -178,13 +179,13 @@ boxOnEnd         _________________________________________/‾‾‾‾‾‾‾
 
 ## Известные ограничения (на момент экспорта)
 
-- Логика не реализована: `ProgramCycle.scl` и `ConveyorMain.scl` — пустые блоки, экспортированные из пустого проекта.
-- Блоков `HardwareInput`, `HardwareOutput`, `LogicDevice`, `HMIInterface` и DB `Hmi_DB` в репозитории ещё нет.
-- Панель оператора (WinCC Basic) не создана — требования раздела ЧМИ не реализованы.
+- Блоки хранятся как внешние источники: после правки `*.scl`/`*.db` их нужно заново генерировать в TIA (`Generate blocks from source`), иначе в проекте останется прежняя версия блока.
+- Панель оператора (WinCC Basic) не создана: экраны, кнопки и привязки элементов к `"Hmi_DB"` выполняются в GUI TIA. В репозитории есть только global-DB панели и блок `HMIInterface`.
 - Права `hmiVisible`/`hmiAccessible`/`hmiWriteable` у всех тегов I/O — `True`. Это сделано намеренно: теги читает и пишет Factory I/O (см. раздел «Симуляция поля в Factory I/O»). При этом писать в `DI_*` должна только Factory I/O, а в `DO_*` — только программа.
-- Лампа «работа» привязана к физическому выходу `%Q0.1` (годится для Factory I/O); для панели оператора нужен отдельный сигнал (`"Hmi_DB".LampWork`).
-- Нет тегов аварии, кнопки «Стоп» и режимов (`HMI_LampFault`, `DI_EStop`, `HMI_CmdStart`, `HMI_CmdStop`).
+- Лампа «работа» дублируется: физический выход `%Q0.1` (`DO_LampWork`) и поле панели `"Hmi_DB".LampWork`. Если физической лампы нет, выход остаётся неиспользованным и в TIA его можно не подключать.
+- Нет тегов аварии, кнопки «Стоп» и режимов (`HMI_LampFault`, `DI_EStop`, `HMI_CmdStart`, `HMI_CmdStop`): поле `"Hmi_DB".LampFault` есть, но источника сбоя в задании нет, поэтому лампа всегда погашена (`HMIInterface` получает `BeltFault := FALSE`).
 - Нет контроля доезда коробки по таймауту: при обрыве датчика конца лента работает бесконечно.
+- Останов выполняется по переднему фронту конечного датчика (`R_TRIG` в `LogicDevice`): коробка, оставшаяся на датчике, не блокирует пуск, но и нового фронта не даёт — если следующая коробка придёт при уже занятом конечном датчике, лента не остановится. Нужен контроль схода коробки (таймаут или второй датчик) — при появлении такого требования в задании.
 - Нет блокировки пуска при занятом конечном датчике (если по технологии это требуется — уточнить в задании).
 - Файл проекта `*.ap19` в git не хранится: конфигурация оборудования воспроизводится по разделу «Развёртывание».
 
