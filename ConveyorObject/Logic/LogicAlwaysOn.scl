@@ -1,0 +1,14 @@
+FUNCTION_BLOCK "LogicAlwaysOn"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      BoxOnEnd { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      CommandRotate { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+BEGIN
+   CommandRotate := NOT BoxOnEnd;
+END_FUNCTION_BLOCK

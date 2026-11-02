@@ -3,7 +3,7 @@ FUNCTION_BLOCK "ConveyorMain"
 VERSION : 0.1
    VAR 
       hardIn : "HardwareInput";
-      logic : "LogicDevice";
+      logic : "LogicAlwaysOn";
       hardOut : "HardwareOutput";
       hmi : "HMIInterface";
    END_VAR
@@ -24,15 +24,14 @@ BEGIN
     // 1. Датчики: чтение полевых входов и нормализация НЗ
     #hardIn();
 
-    // 2. Логика: RS-триггер с самоподхватом
-    #logic(BoxOnStart := #hardIn.BoxOnStart,
-           BoxOnEnd   := #hardIn.BoxOnEnd);
+    // 2. Логика: лента вращается, пока коробки нет на конечном датчике
+    #logic(BoxOnEnd := #hardIn.BoxOnEnd);
 
     // 3. Выходы: двигатель конвейера и физическая лампа «работа»
-    #hardOut(ComRotate := #logic.ComRotate,
-             LampWork  := #logic.ComRotate);
+    #hardOut(ComRotate := #logic.CommandRotate,
+             LampWork  := #logic.CommandRotate);
 
     // 4. Панель оператора: сбоев в задании нет, лампа сбоя погашена
-    #hmi(BeltRun   := #logic.ComRotate,
+    #hmi(BeltRun   := #logic.CommandRotate,
          BeltFault := FALSE);
 END_FUNCTION_BLOCK
