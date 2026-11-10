@@ -1,0 +1,35 @@
+FUNCTION_BLOCK "LogicTirggerStartStop"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      BoxOnStart { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      BoxOnEnd { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      CommandRotate { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+   VAR 
+      runCmd : Bool := FALSE;
+   END_VAR
+
+BEGIN
+    // ============================================
+    // ЛОГИКА ПУСКА И ОСТАНОВА ЛЕНТЫ КОНВЕЙЕРА
+    // ============================================
+    // RS-триггер с самоподхватом (доминирует сброс):
+    //   SET   — коробка обнаружена на датчике начала ленты;
+    //   RESET — коробка доехала до датчика конца ленты.
+    // Останов выполняется по уровню: пока коробка стоит на конечном
+    // датчике, пуск следующей коробки запрещён. После схода коробки
+    // с датчика лента сама не включается — нужен новый сигнал
+    // с датчика начала, поэтому повторного пуска «по памяти» нет.
+    // Состояние хранится в статической #runCmd, а instance-DB
+    // "ConveyorMain_DB" объявлен NON_RETAIN: после STOP→RUN триггер
+    // сброшен, и при пустой ленте самозапуска не происходит.
+    // ============================================
+
+    #runCmd := (#BoxOnStart OR #runCmd) AND NOT #BoxOnEnd;
+    #CommandRotate := #runCmd;
+END_FUNCTION_BLOCK
