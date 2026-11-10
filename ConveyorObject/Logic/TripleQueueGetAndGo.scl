@@ -1,0 +1,49 @@
+FUNCTION_BLOCK "TripleQueueGetAndGo"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      "Begin" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      End { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      CommandRotate { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      Full { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+   VAR 
+      runCmd { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      R_TRIG_0 {InstructionName := 'R_TRIG'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : R_TRIG;
+      count { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      F_TRIG_0 {InstructionName := 'F_TRIG'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : F_TRIG;
+      F_TRIG_1 {InstructionName := 'F_TRIG'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : F_TRIG;
+   END_VAR
+
+
+BEGIN
+	
+	#R_TRIG_0(CLK:=#Begin);
+	#F_TRIG_0(CLK:=#Begin);
+	IF #F_TRIG_0.Q THEN
+	  #count := #count + 1;
+	END_IF;
+	
+	#F_TRIG_1(CLK:=#End);
+	IF #F_TRIG_1.Q THEN
+	  #count := #count - 1;
+	END_IF;
+	
+	#runCmd := (#R_TRIG_0.Q OR #runCmd) AND NOT #F_TRIG_0.Q;
+	
+	IF #count >= 3 THEN
+	  #Full := TRUE;
+	ELSIF #count = 0 THEN
+	  #Full := FALSE;
+	END_IF;
+	
+	#CommandRotate := #Full OR #runCmd;
+	
+	
+	
+END_FUNCTION_BLOCK
+

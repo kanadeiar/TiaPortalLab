@@ -1,0 +1,37 @@
+FUNCTION_BLOCK "AlwaysOnTrigger"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Allow { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      Start { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      Stop { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      CommandRotate { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+   VAR 
+      runCmd { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      count { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      R_TRIG_0 {InstructionName := 'R_TRIG'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : R_TRIG;
+      F_TRIG_0 {InstructionName := 'F_TRIG'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : F_TRIG;
+   END_VAR
+
+
+BEGIN
+	
+	#R_TRIG_0(CLK:=#Start);
+	IF #R_TRIG_0.Q THEN
+	  #count := #count + 1;
+	END_IF;
+	
+	#F_TRIG_0(CLK:=#Stop);
+	IF #F_TRIG_0.Q THEN
+	  #count := #count - 1;
+	END_IF;
+	
+	#runCmd := (#count > 0) AND #Allow;
+	#CommandRotate := #runCmd;
+	
+END_FUNCTION_BLOCK

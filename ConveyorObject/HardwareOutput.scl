@@ -2,9 +2,13 @@ FUNCTION_BLOCK "HardwareOutput"
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
    VAR_INPUT 
-
+      EntryConveyer { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      BufferConveyer { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
    END_VAR
 
-BEGIN
 
+BEGIN
+	
+	"DO_CommandEntryConveyer" := #EntryConveyer;
+	"DO_CommandBufferConveyer" := #BufferConveyer;
 END_FUNCTION_BLOCK

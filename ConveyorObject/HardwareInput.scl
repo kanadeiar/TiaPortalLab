@@ -2,9 +2,15 @@ FUNCTION_BLOCK "HardwareInput"
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
    VAR_OUTPUT 
-
+      ItemReady { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      AtEntry { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      AtExit { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
    END_VAR
 
-BEGIN
 
+BEGIN
+	
+	#ItemReady := NOT "DI_SensorItemReady";
+	#AtEntry := NOT "DI_SensorAtEntry";
+	#AtExit := NOT "DI_SensorAtExit";
 END_FUNCTION_BLOCK

@@ -2,9 +2,24 @@ FUNCTION_BLOCK "ConveyorMain"
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
    VAR 
-
+      hardIn { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "HardwareInput";
+      hardOut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "HardwareOutput";
+      logicOne { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "AlwaysOnTrigger";
+      logicTwo { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "TripleQueueGetAndGo";
    END_VAR
 
 BEGIN
-
+	
+	#hardIn();
+	
+	#logicOne(Allow:=NOT #logicTwo.Full,
+	       Start:=#hardIn.ItemReady,
+	       Stop:=#hardIn.AtEntry);
+	
+	#logicTwo(Begin:=#hardIn.AtEntry,
+	          End:=#hardIn.AtExit);
+	
+	#hardOut(EntryConveyer:=#logicOne.CommandRotate,
+	         BufferConveyer:=#logicTwo.CommandRotate);	
+	
 END_FUNCTION_BLOCK
