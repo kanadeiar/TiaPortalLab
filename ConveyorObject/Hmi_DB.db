@@ -3,7 +3,14 @@ DATA_BLOCK "Hmi_DB"
 VERSION : 0.1
 NON_RETAIN
    VAR 
-
+      // Сигналы состояния для HMI (чтение панелью)
+      BeltRun     { ExternalAccessible := 'True'; ExternalVisible := 'True' } : Bool;
+      BeltFault   { ExternalAccessible := 'True'; ExternalVisible := 'True' } : Bool;
+      BufferFull  { ExternalAccessible := 'True'; ExternalVisible := 'True' } : Bool;
+      BufferCount { ExternalAccessible := 'True'; ExternalVisible := 'True' } : Int;
+      StateIdle   { ExternalAccessible := 'True'; ExternalVisible := 'True' } : Bool;
+      StateFill   { ExternalAccessible := 'True'; ExternalVisible := 'True' } : Bool;
+      StateDischarge { ExternalAccessible := 'True'; ExternalVisible := 'True' } : Bool;
    END_VAR
 
 

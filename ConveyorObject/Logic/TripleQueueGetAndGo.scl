@@ -2,7 +2,7 @@ FUNCTION_BLOCK "TripleQueueGetAndGo"
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
    VAR_INPUT 
-      "Begin" { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      Begin { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
       End { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
    END_VAR
 
@@ -12,38 +12,69 @@ VERSION : 0.1
    END_VAR
 
    VAR 
-      runCmd { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
-      R_TRIG_0 {InstructionName := 'R_TRIG'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : R_TRIG;
+      // Машина состояний: 10=Idle, 20=Fill, 30=Discharge
+      state { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      // Счётчик коробок на буфере
       count { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
-      F_TRIG_0 {InstructionName := 'F_TRIG'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : F_TRIG;
-      F_TRIG_1 {InstructionName := 'F_TRIG'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : F_TRIG;
+      // Детектор переднего фронта Begin (коробка прибыла на P1)
+      R_TRIG_Begin {InstructionName := 'R_TRIG'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : R_TRIG;
+      // Детектор заднего фронта End (коробка покинула P3)
+      F_TRIG_End   {InstructionName := 'F_TRIG'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : F_TRIG;
+   END_VAR
+
+   VAR_TEMP 
+      cmdRotate : Bool;
    END_VAR
 
 
 BEGIN
-	
-	#R_TRIG_0(CLK:=#Begin);
-	#F_TRIG_0(CLK:=#Begin);
-	IF #F_TRIG_0.Q THEN
-	  #count := #count + 1;
-	END_IF;
-	
-	#F_TRIG_1(CLK:=#End);
-	IF #F_TRIG_1.Q THEN
-	  #count := #count - 1;
-	END_IF;
-	
-	#runCmd := (#R_TRIG_0.Q OR #runCmd) AND NOT #F_TRIG_0.Q;
-	
-	IF #count >= 3 THEN
-	  #Full := TRUE;
-	ELSIF #count = 0 THEN
-	  #Full := FALSE;
-	END_IF;
-	
-	#CommandRotate := #Full OR #runCmd;
-	
-	
-	
-END_FUNCTION_BLOCK
+    // Инициализация при первом скане
+    IF #state = 0 THEN
+      #state := 10; // Idle
+      #count := 0;
+    END_IF;
 
+    // Детекторы фронтов
+    #R_TRIG_Begin(CLK:=#Begin);
+    #F_TRIG_End(CLK:=#End);
+
+    CASE #state OF
+      10: // Idle — ожидание первой коробки
+          #cmdRotate := FALSE;
+          IF #R_TRIG_Begin.Q THEN
+            #count := 1;
+            #state := 20; // Fill
+          END_IF;
+
+      20: // Fill — накопление партии
+          #cmdRotate := TRUE;
+          IF #R_TRIG_Begin.Q THEN
+            // Прибыла новая коробка на P1
+            #count := #count + 1;
+          END_IF;
+          IF #count >= 3 THEN
+            #state := 30; // Discharge
+          END_IF;
+
+      30: // Discharge — выдача накопленной партии
+          #cmdRotate := TRUE;
+          IF #F_TRIG_End.Q THEN
+            // Коробка покинула P3 (задний фронт AtExit)
+            #count := #count - 1;
+          END_IF;
+          IF #count <= 0 THEN
+            #count := 0;
+            #state := 20; // Fill — набирать следующую партию
+          END_IF;
+
+      ELSE // Безопасная ветвь — сброс в Idle
+          #state := 10;
+          #count := 0;
+          #cmdRotate := FALSE;
+    END_CASE;
+
+    // Full = TRUE только во время Discharge (запрет приёма новых коробок)
+    #Full := (#state = 30);
+    #CommandRotate := #cmdRotate;
+
+END_FUNCTION_BLOCK

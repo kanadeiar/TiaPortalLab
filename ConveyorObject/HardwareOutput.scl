@@ -8,7 +8,7 @@ VERSION : 0.1
 
 
 BEGIN
-	
-	"DO_CommandEntryConveyer" := #EntryConveyer;
-	"DO_CommandBufferConveyer" := #BufferConveyer;
+
+    "DO_CommandEntryConveyer" := #EntryConveyer;
+    "DO_CommandBufferConveyer" := #BufferConveyer;
 END_FUNCTION_BLOCK

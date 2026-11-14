@@ -12,26 +12,41 @@ VERSION : 0.1
    END_VAR
 
    VAR 
-      runCmd { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      // Инициализация выполнена?
+      initDone { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      // Счётчик коробок на приёмном конвейере 
       count { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      // Детектор переднего фронта Start (коробка прибыла на P0)
       R_TRIG_0 {InstructionName := 'R_TRIG'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : R_TRIG;
+      // Детектор заднего фронта Stop (коробка покинула P1 → уехала на буфер)
       F_TRIG_0 {InstructionName := 'F_TRIG'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : F_TRIG;
+   END_VAR
+
+   VAR_TEMP 
+      runCmd : Bool;
    END_VAR
 
 
 BEGIN
-	
-	#R_TRIG_0(CLK:=#Start);
-	IF #R_TRIG_0.Q THEN
-	  #count := #count + 1;
-	END_IF;
-	
-	#F_TRIG_0(CLK:=#Stop);
-	IF #F_TRIG_0.Q THEN
-	  #count := #count - 1;
-	END_IF;
-	
-	#runCmd := (#count > 0) AND #Allow;
-	#CommandRotate := #runCmd;
-	
+    // Инициализация при первом скане
+    IF NOT #initDone THEN
+      #count := 0;
+      #initDone := TRUE;
+    END_IF;
+
+    // Start: передний фронт ItemReady (коробка поступила на подачу Entry/P0)
+    #R_TRIG_0(CLK:=#Start);
+    IF #R_TRIG_0.Q THEN
+      #count := #count + 1;
+    END_IF;
+
+    // Stop: задний фронт AtEntry (коробка покинула P1 — уехала на буфер)
+    #F_TRIG_0(CLK:=#Stop);
+    IF #F_TRIG_0.Q AND (#count > 0) THEN
+      #count := #count - 1;
+    END_IF;
+
+    #runCmd := (#count > 0) AND #Allow;
+    #CommandRotate := #runCmd;
+
 END_FUNCTION_BLOCK

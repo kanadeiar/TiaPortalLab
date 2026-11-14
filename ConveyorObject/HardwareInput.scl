@@ -9,8 +9,8 @@ VERSION : 0.1
 
 
 BEGIN
-	
-	#ItemReady := NOT "DI_SensorItemReady";
-	#AtEntry := NOT "DI_SensorAtEntry";
-	#AtExit := NOT "DI_SensorAtExit";
+
+    #ItemReady := NOT "DI_SensorItemReady";
+    #AtEntry := NOT "DI_SensorAtEntry";
+    #AtExit := NOT "DI_SensorAtExit";
 END_FUNCTION_BLOCK

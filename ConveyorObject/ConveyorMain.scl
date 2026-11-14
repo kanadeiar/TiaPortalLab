@@ -6,20 +6,48 @@ VERSION : 0.1
       hardOut { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "HardwareOutput";
       logicOne { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "AlwaysOnTrigger";
       logicTwo { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "TripleQueueGetAndGo";
+      hmi { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "HMIInterface";
    END_VAR
 
+
 BEGIN
-	
-	#hardIn();
-	
-	#logicOne(Allow:=NOT #logicTwo.Full,
-	       Start:=#hardIn.ItemReady,
-	       Stop:=#hardIn.AtEntry);
-	
-	#logicTwo(Begin:=#hardIn.AtEntry,
-	          End:=#hardIn.AtExit);
-	
-	#hardOut(EntryConveyer:=#logicOne.CommandRotate,
-	         BufferConveyer:=#logicTwo.CommandRotate);	
-	
+
+    // 1. Слой входа — чтение физических датчиков
+    #hardIn();
+
+    // 2. Слой логики — управление конвейерами
+    // Приёмный конвейер (AlwaysOnTrigger):
+    //   - Allow = NOT #logicTwo.Full (запрет приёма, пока буфер выдаёт партию)
+    //   - Start = #hardIn.ItemReady (передний фронт — коробка прибыла на P0)
+    //   - Stop = #hardIn.AtEntry (задний фронт — коробка покинула P1)
+    #logicOne(Allow:=NOT #logicTwo.Full,
+              Start:=#hardIn.ItemReady,
+              Stop:=#hardIn.AtEntry);
+
+    // Буферный конвейер (TripleQueueGetAndGo):
+    //   - Begin = #hardIn.AtEntry (передний фронт — коробка прибыла на P1)
+    //   - End = #hardIn.AtExit (задний фронт — коробка покинула P3)
+    #logicTwo(Begin:=#hardIn.AtEntry,
+              End:=#hardIn.AtExit);
+
+    // 3. Слой выхода — запись в физические выходы
+    #hardOut(EntryConveyer:=#logicOne.CommandRotate,
+             BufferConveyer:=#logicTwo.CommandRotate);
+
+    // 4. Слой ЧМИ — подготовка данных для панели оператора
+    #hmi(EntryConveyer:=#logicOne.CommandRotate,
+         BufferConveyer:=#logicTwo.CommandRotate,
+         IsBufferFull:=#logicTwo.Full,
+         BufferCount:=#logicTwo.count,
+         StateDisplay:=#logicTwo.state);
+
+    // Запись в Hmi_DB для чтения панелью (OPC UA / HMI connection)
+    "Hmi_DB".BeltRun := #hmi.BeltRun;
+    "Hmi_DB".BeltFault := #hmi.BeltFault;
+    "Hmi_DB".BufferFull := #hmi.BufferFullHmi;
+    "Hmi_DB".BufferCount := #logicTwo.count;
+    "Hmi_DB".StateIdle := (#logicTwo.state = 10);
+    "Hmi_DB".StateFill := (#logicTwo.state = 20);
+    "Hmi_DB".StateDischarge := (#logicTwo.state = 30);
+
 END_FUNCTION_BLOCK

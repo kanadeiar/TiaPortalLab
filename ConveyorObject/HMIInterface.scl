@@ -2,10 +2,26 @@ FUNCTION_BLOCK "HMIInterface"
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
    VAR_INPUT 
-      BeltRun : Bool;
-      BeltFault : Bool;
+      EntryConveyer : Bool;
+      BufferConveyer : Bool;
+      IsBufferFull : Bool;
+      BufferCount : Int;
+      StateDisplay : Int;
    END_VAR
 
+   VAR_OUTPUT 
+      BeltRun { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      BeltFault { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      BufferFullHmi { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+
 BEGIN
+    // BeltRun: линия работает если хоть один конвейер вращается
+    #BeltRun := #EntryConveyer OR #BufferConveyer;
+    // BeltFault: пока без аварий — расширяемый флаг
+    #BeltFault := FALSE;
+    // BufferFullHmi: сигнал переполнения буфера для HMI
+    #BufferFullHmi := #IsBufferFull;
 
 END_FUNCTION_BLOCK
